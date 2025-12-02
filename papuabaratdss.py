@@ -146,6 +146,14 @@ label = {
     "DDD_X": "Arah Angin (°)"
 }
 
+if len(available_vars) == 0:
+    st.error(
+        "Tidak ada variabel iklim yang dikenali di dataset.\n\n"
+        "Pastikan minimal ada salah satu dari kolom: "
+        + ", ".join(possible_vars)
+    )
+    st.stop()
+
 # ================== AGGREGASI BULANAN =======================
 agg_dict = {v: "mean" for v in available_vars}
 if "curah_hujan" in available_vars:
@@ -153,7 +161,54 @@ if "curah_hujan" in available_vars:
 
 monthly = df.groupby(["Tahun", "Bulan"]).agg(agg_dict).reset_index()
 
-# ================== TRAIN MODEL =======================
+# ================== DATA BULANAN (TABEL) =======================
+st.markdown('<div class="section-title">📊 Data Bulanan (ringkasan)</div>', unsafe_allow_html=True)
+st.dataframe(monthly, use_container_width=True)
+
+# ================== GRAFIK HARIAN - DSS =======================
+st.markdown('<div class="section-title">📈 Grafik Harian - DSS</div>', unsafe_allow_html=True)
+
+colA, colB = st.columns(2)
+
+# --- Grafik 1: Suhu Harian (Tn, Tx, Tavg)
+with colA:
+    st.markdown("**Tren Suhu Harian**")
+    temp_cols = [c for c in ["Tn", "Tx", "Tavg"] if c in df.columns]
+    if len(temp_cols) > 0:
+        df_temp = df[["Tanggal"] + temp_cols].copy()
+        df_temp = df_temp.melt(id_vars="Tanggal", var_name="variable", value_name="value")
+
+        fig_daily_temp = px.line(
+            df_temp,
+            x="Tanggal",
+            y="value",
+            color="variable",
+            template="plotly_white",
+            color_discrete_map={
+                "Tn": "#0EA5E9",
+                "Tx": "#60A5FA",
+                "Tavg": "#EF4444"
+            }
+        )
+        st.plotly_chart(fig_daily_temp, use_container_width=True)
+    else:
+        st.info("Kolom **Tn**, **Tx**, atau **Tavg** tidak tersedia pada dataset.")
+
+# --- Grafik 2: Curah Hujan Harian
+with colB:
+    st.markdown("**Tren Curah Hujan Harian**")
+    if "curah_hujan" in df.columns:
+        fig_daily_rain = px.line(
+            df,
+            x="Tanggal",
+            y="curah_hujan",
+            template="plotly_white"
+        )
+        st.plotly_chart(fig_daily_rain, use_container_width=True)
+    else:
+        st.info("Kolom **curah_hujan** tidak tersedia pada dataset.")
+
+# ================== TRAIN MODEL (BULANAN) =======================
 models = {}
 metrics = {}
 
@@ -202,8 +257,8 @@ with c3:
     </div>
     """, unsafe_allow_html=True)
 
-# ================== GRAFIK HISTORIS =======================
-st.markdown('<div class="section-title">📈 Tren Data Historis</div>', unsafe_allow_html=True)
+# ================== GRAFIK HISTORIS BULANAN =======================
+st.markdown('<div class="section-title">📈 Tren Data Bulanan</div>', unsafe_allow_html=True)
 
 var_plot = st.selectbox("Pilih Variabel", [label[v] for v in available_vars])
 key = [k for k, v in label.items() if v == var_plot][0]
