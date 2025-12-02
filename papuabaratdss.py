@@ -7,66 +7,104 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
 # ================== PAGE CONFIG =======================
-st.set_page_config(page_title="🌤️ Prediksi Iklim Papua Barat", layout="wide")
+st.set_page_config(page_title="🌧️ Analisis & Prediksi Iklim Papua Barat", layout="wide")
 
-# ================== SOFT BLUE AESTHETIC CSS =======================
+# ================== CUSTOM CSS (TAMPILAN BARU) =======================
 st.markdown("""
     <style>
-
+    /* Background utama dan sidebar */
     .main {
-        background-color: #E8F4FF !important;
+        background: #F7F5F2 !important;
     }
-
     [data-testid="stSidebar"] {
-        background-color: #D6ECFF !important;
+        background: #FFFFFF !important;
+        border-right: 1px solid #E0DED8;
     }
 
-    .main-title {
-        font-size: 42px !important;
-        font-weight: 700 !important;
-        color: #2A6F97 !important;
-        text-align: center;
-        padding-bottom: 6px;
+    /* Judul utama */
+    .main-title-wrap {
+        background: linear-gradient(120deg, #0F766E, #22C55E);
+        padding: 18px 26px;
+        border-radius: 18px;
+        color: white;
+        text-align: left;
+        box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+        margin-bottom: 8px;
+    }
+    .main-title-wrap h1 {
+        font-size: 30px;
+        margin: 0;
+        font-weight: 800;
+    }
+    .main-title-wrap p {
+        font-size: 14px;
+        margin: 4px 0 0 0;
+        opacity: 0.95;
     }
 
-    .subtitle {
-        font-size: 19px;
-        color: #468FAF;
-        text-align: center;
-        margin-top: -10px;
-        margin-bottom: 20px;
+    /* Subjudul bagian */
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #134E4A;
+        margin-top: 10px;
+        margin-bottom: 2px;
     }
 
-    /* Card Statistik */
+    /* Card statistik baru */
     .metric-card {
         background-color: #FFFFFF;
-        padding: 20px;
+        padding: 16px 18px;
         border-radius: 16px;
-        box-shadow: 0px 4px 12px rgba(0,0,0,0.06);
-        border-left: 6px solid #61A5C2;
-        text-align: center;
-        margin-bottom: 15px;
+        box-shadow: 0px 4px 14px rgba(15,118,110,0.10);
+        border: 1px solid rgba(15,118,110,0.18);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .metric-label {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #64748B;
+    }
+    .metric-value {
+        font-size: 26px;
+        font-weight: 700;
+        color: #0F172A;
+    }
+    .metric-icon {
+        font-size: 20px;
+        margin-bottom: 2px;
     }
 
-    h4 {
-        color: #1B4965;
-        margin-bottom: -5px;
+    /* Label selectbox di konten */
+    .stSelectbox label {
+        font-weight: 600;
+        color: #0F172A;
     }
 
+    /* Sedikit rapikan header sidebar */
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3 {
+        color: #0F766E;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-
 # ================== TITLE =======================
 st.markdown("""
-<h1 class="main-title">🌤️ Dashboard Analisis & Prediksi Iklim — Papua Barat</h1>
-<p class="subtitle">Visualisasi historis, eksplorasi variabel iklim, dan prediksi jangka panjang dengan tema soft blue aesthetic.</p>
+<div class="main-title-wrap">
+    <h1>🌧️ Analisis & Prediksi Iklim Papua Barat</h1>
+    <p>Dashboard interaktif untuk menampilkan data historis dan prediksi jangka panjang
+    berbagai variabel iklim di wilayah Papua Barat.</p>
+</div>
 """, unsafe_allow_html=True)
-
 
 # ================== LOAD DATA =======================
 @st.cache_data
 def load_data():
+    # PENTING: pastikan file ini ada di folder yang sama
     df = pd.read_excel("PAPUABARAT2.xlsx", sheet_name="Data Harian - Table")
     df = df.loc[:, ~df.columns.duplicated()]
     if "kecepatan_angin" in df.columns:
@@ -77,7 +115,6 @@ def load_data():
     return df
 
 df = load_data()
-
 
 # ================== SIDEBAR =======================
 st.sidebar.header("🔍 Filter Data")
@@ -93,11 +130,9 @@ selected_month = st.sidebar.multiselect(
 df = df[df["Tahun"].isin(selected_year)]
 df = df[df["Bulan"].isin(selected_month)]
 
-
 # ================== VARIABLES =======================
 possible_vars = ["Tn", "Tx", "Tavg", "kelembaban", "curah_hujan",
                  "matahari", "FF_X", "DDD_X"]
-
 available_vars = [v for v in possible_vars if v in df.columns]
 
 label = {
@@ -111,21 +146,19 @@ label = {
     "DDD_X": "Arah Angin (°)"
 }
 
-
 # ================== AGGREGASI BULANAN =======================
 agg_dict = {v: "mean" for v in available_vars}
 if "curah_hujan" in available_vars:
     agg_dict["curah_hujan"] = "sum"
 
-monthly = df.groupby(["Tahun","Bulan"]).agg(agg_dict).reset_index()
-
+monthly = df.groupby(["Tahun", "Bulan"]).agg(agg_dict).reset_index()
 
 # ================== TRAIN MODEL =======================
 models = {}
 metrics = {}
 
 for v in available_vars:
-    X = monthly[["Tahun","Bulan"]]
+    X = monthly[["Tahun", "Bulan"]]
     y = monthly[v]
 
     Xtr, Xts, ytr, yts = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -135,43 +168,45 @@ for v in available_vars:
     pred = model.predict(Xts)
 
     models[v] = model
-    metrics[v] = (mean_squared_error(yts, pred)**0.5, r2_score(yts, pred))
-
+    metrics[v] = (mean_squared_error(yts, pred) ** 0.5, r2_score(yts, pred))
 
 # ================== CARD STATISTIK =======================
+st.markdown('<div class="section-title">📊 Ringkasan Data</div>', unsafe_allow_html=True)
+
 c1, c2, c3 = st.columns(3)
 
 with c1:
     st.markdown(f"""
     <div class="metric-card">
-        <h4>📏 Data Historis</h4>
-        <h2>{len(df):,}</h2>
+        <div class="metric-icon">📏</div>
+        <div class="metric-label">Data Historis</div>
+        <div class="metric-value">{len(df):,}</div>
     </div>
     """, unsafe_allow_html=True)
 
 with c2:
     st.markdown(f"""
     <div class="metric-card">
-        <h4>📅 Rentang Tahun</h4>
-        <h2>{df['Tahun'].min()} - {df['Tahun'].max()}</h2>
+        <div class="metric-icon">📅</div>
+        <div class="metric-label">Rentang Tahun</div>
+        <div class="metric-value">{df['Tahun'].min()} - {df['Tahun'].max()}</div>
     </div>
     """, unsafe_allow_html=True)
 
 with c3:
     st.markdown(f"""
     <div class="metric-card">
-        <h4>📦 Variabel Iklim</h4>
-        <h2>{len(available_vars)}</h2>
+        <div class="metric-icon">🌡️</div>
+        <div class="metric-label">Variabel Iklim</div>
+        <div class="metric-value">{len(available_vars)}</div>
     </div>
     """, unsafe_allow_html=True)
 
-
 # ================== GRAFIK HISTORIS =======================
-st.subheader("📈 Tren Data Historis")
+st.markdown('<div class="section-title">📈 Tren Data Historis</div>', unsafe_allow_html=True)
 
 var_plot = st.selectbox("Pilih Variabel", [label[v] for v in available_vars])
-
-key = [k for k,v in label.items() if v == var_plot][0]
+key = [k for k, v in label.items() if v == var_plot][0]
 
 monthly["Tanggal"] = pd.to_datetime(
     monthly["Tahun"].astype(str) + "-" +
@@ -185,26 +220,24 @@ fig1 = px.line(
     markers=True,
     title=var_plot,
     template="plotly_white",
-    color_discrete_sequence=["#2A6F97"]
+    color_discrete_sequence=["#0F766E"]  # hijau teal
 )
 
 st.plotly_chart(fig1, use_container_width=True)
 
-
 # ================== PREDIKSI =======================
 future = pd.DataFrame(
-    [(y,m) for y in range(2025,2076) for m in range(1,13)],
-    columns=["Tahun","Bulan"]
+    [(y, m) for y in range(2025, 2076) for m in range(1, 13)],
+    columns=["Tahun", "Bulan"]
 )
 
 for v in available_vars:
-    future[f"Pred_{v}"] = models[v].predict(future[["Tahun","Bulan"]])
+    future[f"Pred_{v}"] = models[v].predict(future[["Tahun", "Bulan"]])
 
-st.subheader("🔮 Prediksi 2025–2075")
+st.markdown('<div class="section-title">🔮 Prediksi 2025–2075</div>', unsafe_allow_html=True)
 
 var_pred = st.selectbox("Pilih Variabel Prediksi", [label[v] for v in available_vars])
-
-key2 = [k for k,v in label.items() if v == var_pred][0]
+key2 = [k for k, v in label.items() if v == var_pred][0]
 
 future["Tanggal"] = pd.to_datetime(
     future["Tahun"].astype(str) + "-" +
@@ -217,11 +250,10 @@ fig2 = px.line(
     y=f"Pred_{key2}",
     title=f"Prediksi {var_pred}",
     template="plotly_white",
-    color_discrete_sequence=["#61A5C2"]
+    color_discrete_sequence=["#22C55E"]  # hijau lebih terang
 )
 
 st.plotly_chart(fig2, use_container_width=True)
-
 
 # ================== DOWNLOAD =======================
 csv = future.to_csv(index=False).encode("utf8")
