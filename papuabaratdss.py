@@ -7,7 +7,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
 # ================== PAGE CONFIG =======================
-st.set_page_config(page_title="🌤️ Prediksi Iklim Kepulauan Riau", layout="wide")
+st.set_page_config(page_title="🌤️ Prediksi Iklim Papua Barat", layout="wide")
 
 # ================== SOFT BLUE AESTHETIC CSS =======================
 st.markdown("""
@@ -59,7 +59,7 @@ st.markdown("""
 
 # ================== TITLE =======================
 st.markdown("""
-<h1 class="main-title">🌤️ Dashboard Analisis & Prediksi Iklim — Kepulauan Riau</h1>
+<h1 class="main-title">🌤️ Dashboard Analisis & Prediksi Iklim — Papua Barat</h1>
 <p class="subtitle">Visualisasi historis, eksplorasi variabel iklim, dan prediksi jangka panjang dengan tema soft blue aesthetic.</p>
 """, unsafe_allow_html=True)
 
@@ -67,7 +67,7 @@ st.markdown("""
 # ================== LOAD DATA =======================
 @st.cache_data
 def load_data():
-    df = pd.read_excel("KEPRI.xlsx", sheet_name="Data Harian - Table")
+    df = pd.read_excel("PAPUABARAT2.xlsx", sheet_name="Data Harian - Table")
     df = df.loc[:, ~df.columns.duplicated()]
     if "kecepatan_angin" in df.columns:
         df = df.rename(columns={"kecepatan_angin": "FF_X"})
@@ -95,7 +95,9 @@ df = df[df["Bulan"].isin(selected_month)]
 
 
 # ================== VARIABLES =======================
-possible_vars = ["Tn", "Tx", "Tavg", "kelembaban", "curah_hujan", "matahari", "FF_X", "DDD_X"]
+possible_vars = ["Tn", "Tx", "Tavg", "kelembaban", "curah_hujan",
+                 "matahari", "FF_X", "DDD_X"]
+
 available_vars = [v for v in possible_vars if v in df.columns]
 
 label = {
@@ -125,6 +127,7 @@ metrics = {}
 for v in available_vars:
     X = monthly[["Tahun","Bulan"]]
     y = monthly[v]
+
     Xtr, Xts, ytr, yts = train_test_split(X, y, test_size=0.2, random_state=42)
 
     model = RandomForestRegressor(n_estimators=180, random_state=42)
@@ -167,10 +170,12 @@ with c3:
 st.subheader("📈 Tren Data Historis")
 
 var_plot = st.selectbox("Pilih Variabel", [label[v] for v in available_vars])
+
 key = [k for k,v in label.items() if v == var_plot][0]
 
 monthly["Tanggal"] = pd.to_datetime(
-    monthly["Tahun"].astype(str) + "-" + monthly["Bulan"].astype(str) + "-01"
+    monthly["Tahun"].astype(str) + "-" +
+    monthly["Bulan"].astype(str) + "-01"
 )
 
 fig1 = px.line(
@@ -182,10 +187,11 @@ fig1 = px.line(
     template="plotly_white",
     color_discrete_sequence=["#2A6F97"]
 )
+
 st.plotly_chart(fig1, use_container_width=True)
 
 
-# ================== PREDIKSI 2025–2075 =======================
+# ================== PREDIKSI =======================
 future = pd.DataFrame(
     [(y,m) for y in range(2025,2076) for m in range(1,13)],
     columns=["Tahun","Bulan"]
@@ -197,10 +203,12 @@ for v in available_vars:
 st.subheader("🔮 Prediksi 2025–2075")
 
 var_pred = st.selectbox("Pilih Variabel Prediksi", [label[v] for v in available_vars])
+
 key2 = [k for k,v in label.items() if v == var_pred][0]
 
 future["Tanggal"] = pd.to_datetime(
-    future["Tahun"].astype(str) + "-" + future["Bulan"].astype(str) + "-01"
+    future["Tahun"].astype(str) + "-" +
+    future["Bulan"].astype(str) + "-01"
 )
 
 fig2 = px.line(
@@ -220,7 +228,6 @@ csv = future.to_csv(index=False).encode("utf8")
 st.download_button(
     "📥 Download Dataset Prediksi",
     data=csv,
-    file_name="prediksi_KEPRI.csv",
+    file_name="prediksi_papua_barat.csv",
     mime="text/csv"
 )
-
